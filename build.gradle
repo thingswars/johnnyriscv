@@ -1,0 +1,13 @@
+apply plugin: 'java'
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.1'
+}
+
+dependencies {
+  testCompile 'junit:junit:4.11'
+}
+
+repositories {
+  mavenCentral()
+}
