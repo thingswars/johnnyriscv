@@ -2,126 +2,95 @@ package org.thingswars.johnnyriscv.support.elf;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 
 import org.thingswars.johnnyriscv.support.Endianness;
 
 public class Elf {
-	
-	private int filePosition;
-	
+
 	private final ElfIdentification elfIdentification;
-	private ElfObjectType objectType;
-	private int machine;
-	private int version;
-	private long entryAddress;
-	private long programHeaderOffset;
-	private long sectionHeaderOffset;
-	private int flags;
-	private int elfHeaderSize;
-	private int programHeaderEntrySize;
-	private int programHeaderEntryCount;
-	private int sectionHeaderEntrySize;
-	private int sectionHeaderEntryCount;
-	private int stringTableIndex;
+	private final ElfObjectType objectType;
+	private final int machine;
+	private final int version;
+	private final long entryAddress;
+	private final long programHeaderOffset;
+	private final long sectionHeaderOffset;
+	private final int flags;
+	private final int elfHeaderSize;
+	private final int programHeaderEntrySize;
+	private final int programHeaderEntryCount;
+	private final int sectionHeaderEntrySize;
+	private final int sectionHeaderEntryCount;
+	private final int stringTableIndex;
+
+	private final ElfProgramHeader[] programHeaders;
 	
 	public Elf(InputStream inputStream) throws IOException {
 		elfIdentification = new ElfIdentification(inputStream);
-		filePosition = ElfIdentification.ELF_IDENT_LENGTH;
+		ElfByteSource elfByteSource = new ElfByteSource(inputStream, elfIdentification);
 
-		objectType = ElfObjectType.fromFileValue(readHalfWord(inputStream));
-		machine = readHalfWord(inputStream);
-		version = readWord(inputStream);
-		entryAddress = readAddress(inputStream);
-		programHeaderOffset = readOffset(inputStream);
-		sectionHeaderOffset = readOffset(inputStream);
-		flags = readWord(inputStream);
-		elfHeaderSize = readHalfWord(inputStream);
-		programHeaderEntrySize = readHalfWord(inputStream);
-		programHeaderEntryCount = readHalfWord(inputStream);
-		sectionHeaderEntrySize = readHalfWord(inputStream);
-		sectionHeaderEntryCount = readHalfWord(inputStream);
-		stringTableIndex = readHalfWord(inputStream);
-		
-		if (programHeaderEntryCount > 0) {
-			filePosition += inputStream.skip(programHeaderOffset - filePosition);
-			System.out.println("Current position:" + filePosition);
-			
+		objectType = ElfObjectType.fromFileValue(elfByteSource.readHalfWord());
+		machine = elfByteSource.readHalfWord();
+		version = elfByteSource.readWord();
+		entryAddress = elfByteSource.readAddress();
+		programHeaderOffset = elfByteSource.readOffset();
+		sectionHeaderOffset = elfByteSource.readOffset();
+		flags = elfByteSource.readWord();
+		elfHeaderSize = elfByteSource.readHalfWord();
+		programHeaderEntrySize = elfByteSource.readHalfWord();
+		programHeaderEntryCount = elfByteSource.readHalfWord();
+		sectionHeaderEntrySize = elfByteSource.readHalfWord();
+		sectionHeaderEntryCount = elfByteSource.readHalfWord();
+		stringTableIndex = elfByteSource.readHalfWord();
+
+		elfByteSource.skipToOffset(programHeaderOffset);
+
+		programHeaders = new ElfProgramHeader[programHeaderEntryCount];
+		for (int i = 0; i < programHeaderEntryCount; i++) {
+			programHeaders[i] = new ElfProgramHeader(elfByteSource);
 		}
-		
 	}
 
 	public ElfIdentification getElfIdentification() {
 		return elfIdentification;
 	}
 
-	private long readOffset(InputStream inputStream) throws IOException {
-		return readAddress(inputStream);
+	public ElfProgramHeader[] getProgramHeaders() {
+		return programHeaders;
 	}
-	
-	private long readAddress(InputStream inputStream) throws IOException {
-		if (elfIdentification.getFormat() == ElfFormat.ELF64) {
-			return readXWord(inputStream);
-		}
-		return readWord(inputStream);
+
+	public ElfObjectType getObjectType() {
+		return objectType;
 	}
-	
-	private int readHalfWord(InputStream inputStream) throws IOException {
-		final byte[] half = new byte[2];
-		final int readBytes = inputStream.read(half);
-		if (readBytes != half.length) {
-			throw new ElfFormatException("Unexpected end of file in half-word");
-		}
-		filePosition += readBytes;
-		if (elfIdentification.getEndianness() == Endianness.LITTLE) {
-			return (half[0] & 0xFF) + ((half[1] & 0xFF) << 8);
-		}
-		else {
-			return (half[1] & 0xFF) + ((half[0] & 0xFF) << 8);
-		}
+
+	public int getMachine() {
+		return machine;
 	}
-	
-	private int readWord(InputStream inputStream) throws IOException {
-		byte[] word = new byte[4];
-		final int readBytes = inputStream.read(word);
-		if (readBytes != word.length) {
-			throw new ElfFormatException("Unexpected end of file in word");
-		}
-		filePosition += readBytes;
-		if (elfIdentification.getEndianness() == Endianness.LITTLE) {
-			return (word[0] & 0xFF) + ((word[1] & 0xFF << 8)) + ((word[2] & 0xFF) << 16) + ((word[3] & 0xFF) << 24);
-		}
-		else {
-			return (word[3] & 0xFF) + ((word[2] & 0xFF << 8)) + ((word[1] & 0xFF) << 16) + ((word[0] & 0xFF) << 24);
-		}
+
+	public int getVersion() {
+		return version;
 	}
-	
-	private long readXWord(InputStream inputStream) throws IOException {
-		byte[] xword = new byte[8];
-		final int readBytes = inputStream.read(xword);
-		if (readBytes != xword.length) {
-			throw new ElfFormatException("Unexpected end of file in xword");
-		}
-		filePosition += readBytes;
-		if (elfIdentification.getEndianness() == Endianness.LITTLE) {
-			return (xword[0] & 0xFFL) + ((xword[1] & 0xFFL << 8)) + ((xword[2] & 0xFFL) << 16) + ((xword[3] & 0xFFL) << 24) +
-		     (xword[4] & 0xFFL << 32) + ((xword[5] & 0xFFL << 40)) + ((xword[6] & 0xFFL) << 48) + ((xword[7] & 0xFFL) << 56);
-		}
-		else {
-			return (xword[7] & 0xFFL) + ((xword[6] & 0xFFL << 8)) + ((xword[5] & 0xFFL) << 16) + ((xword[4] & 0xFFL) << 24) +
-		     (xword[3] & 0xFFL << 32) + ((xword[2] & 0xFFL << 40)) + ((xword[1] & 0xFFL) << 48) + ((xword[0] & 0xFFL) << 56);
-		}
+
+	public long getEntryAddress() {
+		return entryAddress;
+	}
+
+	public int getFlags() {
+		return flags;
+	}
+
+	public int getStringTableIndex() {
+		return stringTableIndex;
 	}
 
 	@Override
 	public String toString() {
 		return "Elf [elfIdentification=" + elfIdentification + ", objectType="
 				+ objectType + ", machine=" + machine + ", version=" + version
-				+ ", entryAddress=" + entryAddress + ", programHeaderOffset="
-				+ programHeaderOffset + ", sectionHeaderOffset="
+				+ ", entryAddress=" + Long.toHexString(entryAddress) + ", sectionHeaderOffset="
 				+ sectionHeaderOffset + ", flags=" + flags + ", elfHeaderSize="
-				+ elfHeaderSize + ", programHeaderEntrySize="
-				+ programHeaderEntrySize + ", programHeaderEntryCount="
-				+ programHeaderEntryCount + ", sectionHeaderEntrySize="
+				+ elfHeaderSize + ", "
+				+ Arrays.toString(programHeaders)
 				+ sectionHeaderEntrySize + ", sectionHeaderEntryCount="
 				+ sectionHeaderEntryCount + ", stringTableIndex="
 				+ stringTableIndex + "]";
