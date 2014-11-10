@@ -11,6 +11,10 @@ johnnyriscv has the following design goals:
  * extensible server-side api (peripherals, instruction set)
  * pre-canned client api and browser terminal
 
+The name is pronounced "Johnny-Risk-Five", inspired by the robot who
+came to life in the 1986 film Short Circuit. (Incidentally, by the
+same director as WarGames).
+
 license
 =======
 
