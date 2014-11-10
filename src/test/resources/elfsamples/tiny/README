@@ -1,0 +1,13 @@
+This directory contains the elf files and accompanying assembly sources from:
+
+"A Whirlwind Tutorial on Creating Really Teensy ELF Executables for Linux"
+
+http://www.muppetlabs.com/~breadbox/software/tiny/teensy.html
+
+These are some fun and interesting examples of elf files. Well worth a
+look in their own right, but they are included here to help us
+test the boundaries of the elf parser.
+
+They are covered under GPLv2+. As we are just parsing the binaries as
+program input at test time, this is assumed in good faith to be
+[mere aggregation](http://www.gnu.org/licenses/gpl-faq.html#MereAggregation).
