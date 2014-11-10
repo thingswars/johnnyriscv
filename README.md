@@ -15,8 +15,17 @@ The name is pronounced "Johnny-Risk-Five", inspired by the robot who
 came to life in the 1986 film Short Circuit. (Incidentally, by the
 same director as WarGames).
 
+status
+======
+
+[![Build Status](https://travis-ci.org/thingswars/johnnyriscv.svg?branch=master)](https://travis-ci.org/thingswars/johnnyriscv)
+
+johnnyriscv is in the pre-alpha/planning stage.
+
 license
 =======
+
+[![License](http://img.shields.io/badge/license-Apache%202-ff69b4.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 
 johnnyriscv itself is under the Apache License version 2. See the
 LICENSE file for the legal details.
