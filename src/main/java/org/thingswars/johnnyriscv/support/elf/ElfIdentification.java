@@ -24,6 +24,9 @@ public class ElfIdentification {
 	public ElfIdentification(InputStream inputStream) throws IOException {
 		byte[] bytes = new byte[ELF_IDENT_LENGTH];
 		int numberReadBytes = inputStream.read(bytes, 0, ELF_IDENT_LENGTH);
+		if (numberReadBytes == -1) {
+			throw new ElfFormatException("Empty file");
+		}
 		if (numberReadBytes >= 4) {
 			if (bytes[0] != 0x7F || bytes[1] != 'E' || bytes[2] != 'L' || bytes[3] != 'F') {
 				throw new ElfFormatException("Invalid magic number");

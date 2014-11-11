@@ -86,7 +86,69 @@ public class ElfReadTest {
 		thrown.expectMessage("Unknown class 0x83");
 		loadTestElf("tiny/bf");
 	}
-	
+
+	@Test
+	public void factor() throws IOException {
+		loadTestElf("tiny/factor");
+	}
+
+	/**
+	 * This has an invalid data encoding (zero) -- confirmed with readelf.
+	 * This which is important to us because we can support both lsb and msb,
+	 * so we need to know the data encoding.
+	 * @throws IOException
+	 */
+	@Test
+	public void hello() throws IOException {
+		thrown.expect(ElfFormatException.class);
+		thrown.expectMessage("Invalid data encoding 0");
+		loadTestElf("tiny/hello");
+	}
+
+	@Test
+	public void hexdump() throws IOException {
+		loadTestElf("tiny/hexdump");
+	}
+
+	/**
+	 * As with hello, invalid date encoding which we need
+	 * @throws IOException
+	 */
+	@Test
+	public void keepalive() throws IOException {
+		thrown.expect(ElfFormatException.class);
+		thrown.expectMessage("Invalid data encoding 0");
+		loadTestElf("tiny/keepalive");
+	}
+
+	@Test
+	public void ls() throws IOException {
+		loadTestElf("tiny/ls");
+	}
+
+	@Test
+	public void puzzle() throws IOException {
+		loadTestElf("tiny/puzzle");
+	}
+
+	/** both "readelf" and "file" are flummoxed by
+	 * this binary, so we just expect any elf format
+	 * exception
+	 * @throws IOException
+	 */
+	@Test
+	public void falseElf() throws IOException {
+		thrown.expect(ElfFormatException.class);
+		loadTestElf("tiny/false");
+	}
+
+	@Test
+	public void empty() throws IOException {
+		thrown.expect(ElfFormatException.class);
+		thrown.expectMessage("Empty file");
+		loadTestElf("empty");
+	}
+
 	private Elf loadTestElf(String name) throws IOException {
 		URL resource = ElfReadTest.class.getResource("/elfsamples/" + name);
 		try (InputStream inputStream = new FileInputStream(new File(resource.getFile()))) {
