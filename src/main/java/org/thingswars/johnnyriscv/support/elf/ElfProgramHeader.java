@@ -1,8 +1,5 @@
 package org.thingswars.johnnyriscv.support.elf;
 
-import java.io.IOException;
-import java.io.InputStream;
-
 public class ElfProgramHeader {
 
     private final ElfProgramHeaderType headerType;
@@ -14,10 +11,10 @@ public class ElfProgramHeader {
     private final int flags;
     private final long alignment;
 
-    public ElfProgramHeader(ElfByteSource elfByteSource) throws IOException {
+    public ElfProgramHeader(ElfByteSource elfByteSource) throws ElfFormatException {
         long currentPosition = elfByteSource.getCurrentPosition();
         headerType = ElfProgramHeaderType.fromFileValue(elfByteSource.readWord());
-        offset = elfByteSource.readOffset();
+        offset = elfByteSource.readWord();
         virtualAddress = elfByteSource.readAddress();
         physicalAddress = elfByteSource.readAddress();
         fileImageSize = elfByteSource.readWord();

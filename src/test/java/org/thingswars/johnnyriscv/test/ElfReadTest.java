@@ -1,11 +1,11 @@
 package org.thingswars.johnnyriscv.test;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URL;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -47,10 +47,10 @@ public class ElfReadTest {
 		assertEquals(0, ident.getAbiVersion());
 		assertEquals(1, ident.getVersion());
 
-		assertEquals(ElfObjectType.EXCUTABLE, elf.getObjectType());
-		assertEquals(1, elf.getVersion());
-		assertEquals(0x5b05b035L, elf.getEntryAddress());
-		assertEquals(0, elf.getFlags());
+		assertEquals(ElfObjectType.EXCUTABLE, elf.getHeader().getObjectType());
+		assertEquals(1, elf.getHeader().getVersion());
+		assertEquals(0x5b05b035L, elf.getHeader().getEntryAddress());
+		assertEquals(0, elf.getHeader().getFlags());
 
 
 //		Program Headers:
@@ -149,10 +149,21 @@ public class ElfReadTest {
 		loadTestElf("empty");
 	}
 
+
+	@Test
+	@Ignore
+	public void vmlinux() throws IOException {
+		System.out.println(loadTestElf("vmlinux"));
+	}
+
 	private Elf loadTestElf(String name) throws IOException {
 		URL resource = ElfReadTest.class.getResource("/elfsamples/" + name);
-		try (InputStream inputStream = new FileInputStream(new File(resource.getFile()))) {
-			return new Elf(inputStream);
+
+		try (RandomAccessFile randomAccessFile = new RandomAccessFile(resource.getFile(), "r")) {
+			try (FileChannel inChannel = randomAccessFile.getChannel()) {
+				MappedByteBuffer buffer = inChannel.map(FileChannel.MapMode.READ_ONLY, 0, inChannel.size());
+				return new Elf(buffer);
+			}
 		}
 	}
 }

@@ -2,48 +2,48 @@ package org.thingswars.johnnyriscv.support.elf;
 
 import org.thingswars.johnnyriscv.support.Endianness;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 /**
  * Created by rob on 10/11/14.
  */
 class ElfByteSource {
 
-    private final InputStream inputStream;
+    private final ByteBuffer byteBuffer;
 
     private final ElfIdentification elfIdentification;
 
-    private int currentPosition;
-
-    ElfByteSource(InputStream inputStream, ElfIdentification elfIdentification) {
-        this.inputStream = inputStream;
+    ElfByteSource(ByteBuffer byteBuffer, ElfIdentification elfIdentification) {
+        this.byteBuffer = byteBuffer;
         this.elfIdentification = elfIdentification;
-        currentPosition = ElfIdentification.ELF_IDENT_LENGTH;
     }
 
-    void skipToOffset(long offset) throws IOException {
-        currentPosition += inputStream.skip(offset - currentPosition);
+    void skipToOffset(int offset) {
+        if (offset > byteBuffer.capacity()) {
+            throw new RuntimeException("Elf Offset past end of file: " + offset);
+        }
+        byteBuffer.position(offset);
     }
 
-    long readOffset() throws IOException {
-        return readAddress();
+    int readOffset() {
+        // ByteBuffer means we cannot support offsets that exceed 32-bit integer
+        long offset = readAddress();
+        if (offset > Integer.MAX_VALUE) {
+            throw new RuntimeException("Offsets past " + Integer.MAX_VALUE + " not supported");
+        }
+        return (int)offset;
     }
 
-    long readAddress() throws IOException {
+    long readAddress() {
         if (elfIdentification.getFormat() == ElfFormat.ELF64) {
             return readXWord();
         }
         return ((long)readWord()) & 0xFFFFFFFFL;
     }
 
-    int readHalfWord() throws IOException {
+    int readHalfWord() {
         final byte[] half = new byte[2];
-        final int readBytes = inputStream.read(half);
-        if (readBytes != half.length) {
-            throw new ElfFormatException("Unexpected end of file in half-word");
-        }
-        currentPosition += readBytes;
+        byteBuffer.get(half);
         if (elfIdentification.getEndianness() == Endianness.LITTLE) {
             return (half[0] & 0xFF) + ((half[1] & 0xFF) << 8);
         }
@@ -52,13 +52,9 @@ class ElfByteSource {
         }
     }
 
-    int readWord() throws IOException {
+    int readWord() {
         byte[] word = new byte[4];
-        final int readBytes = inputStream.read(word);
-        if (readBytes != word.length) {
-            throw new ElfFormatException("Unexpected end of file in word");
-        }
-        currentPosition += readBytes;
+        byteBuffer.get(word);
         if (elfIdentification.getEndianness() == Endianness.LITTLE) {
             return (word[0] & 0xFF) + ((word[1] & 0xFF) << 8) + ((word[2] & 0xFF) << 16) + ((word[3] & 0xFF) << 24);
         }
@@ -67,13 +63,9 @@ class ElfByteSource {
         }
     }
 
-    long readXWord() throws IOException {
+    long readXWord() {
         byte[] xword = new byte[8];
-        final int readBytes = inputStream.read(xword);
-        if (readBytes != xword.length) {
-            throw new ElfFormatException("Unexpected end of file in xword");
-        }
-        currentPosition += readBytes;
+        byteBuffer.get(xword);
         if (elfIdentification.getEndianness() == Endianness.LITTLE) {
             return (xword[0] & 0xFFL) + ((xword[1] & 0xFFL) << 8) + ((xword[2] & 0xFFL) << 16) + ((xword[3] & 0xFFL) << 24) +
                     (xword[4] & 0xFFL << 32) + ((xword[5] & 0xFFL << 40)) + ((xword[6] & 0xFFL) << 48) + ((xword[7] & 0xFFL) << 56);
@@ -85,6 +77,6 @@ class ElfByteSource {
     }
 
     long getCurrentPosition() {
-        return currentPosition;
+        return byteBuffer.position();
     }
 }
