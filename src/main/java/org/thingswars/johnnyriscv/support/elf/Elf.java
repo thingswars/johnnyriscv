@@ -16,7 +16,8 @@ public class Elf {
 
 	private final ElfHeader elfHeader;
 
-	public Elf(ByteBuffer byteBuffer) throws ElfFormatException {
+	public Elf(FileChannel fileChannel) throws IOException {
+		MappedByteBuffer byteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
 		if (byteBuffer.capacity() == 0) {
 			throw new ElfFormatException("Empty file");
 		}

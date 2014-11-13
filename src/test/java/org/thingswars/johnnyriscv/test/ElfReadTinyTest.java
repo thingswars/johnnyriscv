@@ -13,7 +13,7 @@ import org.thingswars.johnnyriscv.support.elf.*;
 
 import static org.junit.Assert.*;
 
-public class ElfReadTest {
+public class ElfReadTinyTest {
 
 	@Rule
     public ExpectedException thrown = ExpectedException.none();
@@ -157,12 +157,11 @@ public class ElfReadTest {
 	}
 
 	private Elf loadTestElf(String name) throws IOException {
-		URL resource = ElfReadTest.class.getResource("/elfsamples/" + name);
+		URL resource = ElfReadTinyTest.class.getResource("/elfsamples/" + name);
 
 		try (RandomAccessFile randomAccessFile = new RandomAccessFile(resource.getFile(), "r")) {
-			try (FileChannel inChannel = randomAccessFile.getChannel()) {
-				MappedByteBuffer buffer = inChannel.map(FileChannel.MapMode.READ_ONLY, 0, inChannel.size());
-				return new Elf(buffer);
+			try (FileChannel fileChannel = randomAccessFile.getChannel()) {
+				return new Elf(fileChannel);
 			}
 		}
 	}
