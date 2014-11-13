@@ -2,21 +2,21 @@ package org.thingswars.johnnyriscv.support.elf;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
 /**
  * Created by rob on 11/11/14.
  */
 public class ElfHeader {
-    private final ByteBuffer byteBuffer;
 
     private final ElfIdentification elfIdentification;
     private final ElfObjectType objectType;
     private final int machine;
     private final int version;
     private final long entryAddress;
-    private final int programHeaderOffset;
-    private final int sectionHeaderOffset;
+    private final long programHeaderOffset;
+    private final long sectionHeaderOffset;
     private final int flags;
     private final int elfHeaderSize;
     private final int programHeaderEntrySize;
@@ -27,11 +27,10 @@ public class ElfHeader {
 
     private final ElfProgramHeader[] programHeaders;
 
-    public ElfHeader(ByteBuffer byteBuffer) throws ElfFormatException {
-
-        this.byteBuffer = byteBuffer;
-        elfIdentification = new ElfIdentification(byteBuffer);
-        ElfByteSource elfByteSource = new ElfByteSource(byteBuffer, elfIdentification);
+    public ElfHeader(ByteSource byteSource) throws IOException {
+    	
+        elfIdentification = new ElfIdentification(byteSource);
+        ElfByteSource elfByteSource = new ElfByteSource(byteSource, elfIdentification);
         objectType = ElfObjectType.fromFileValue(elfByteSource.readHalfWord());
         machine = elfByteSource.readHalfWord();
         version = elfByteSource.readWord();
@@ -46,8 +45,7 @@ public class ElfHeader {
         sectionHeaderEntryCount = elfByteSource.readHalfWord();
         stringTableIndex = elfByteSource.readHalfWord();
 
-        elfByteSource.skipToOffset(programHeaderOffset);
-
+        elfByteSource.seek(programHeaderOffset);
         programHeaders = new ElfProgramHeader[programHeaderEntryCount];
         for (int i = 0; i < programHeaderEntryCount; i++) {
             programHeaders[i] = new ElfProgramHeader(elfByteSource);

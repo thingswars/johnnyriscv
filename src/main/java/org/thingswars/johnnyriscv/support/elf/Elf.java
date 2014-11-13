@@ -1,28 +1,32 @@
 package org.thingswars.johnnyriscv.support.elf;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Arrays;
-import java.util.Random;
-
-import org.thingswars.johnnyriscv.support.Endianness;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Elf {
 
 	private final ElfHeader elfHeader;
+	
+	private final List<ElfSegment> segments;
 
 	public Elf(FileChannel fileChannel) throws IOException {
-		MappedByteBuffer byteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
-		if (byteBuffer.capacity() == 0) {
+		this(new FileChannelByteSource(fileChannel));
+	}
+	
+	public Elf(ByteSource byteSource) throws IOException {
+		if (byteSource.size() == 0) {
 			throw new ElfFormatException("Empty file");
 		}
-		byteBuffer.mark();
-		elfHeader = new ElfHeader(byteBuffer);
+		elfHeader = new ElfHeader(byteSource);
+		segments = new ArrayList<>();
+		for (ElfProgramHeader programHeader : elfHeader.getProgramHeaders()) {
+			if (programHeader.loadableSegment()) {
+				segments.add(new ElfSegment(programHeader, byteSource));
+			}
+		}
 	}
 
 	public ElfHeader getHeader() {
@@ -35,6 +39,10 @@ public class Elf {
 
 	public ElfProgramHeader[] getProgramHeaders() {
 		return elfHeader.getProgramHeaders();
+	}
+	
+	public List<ElfSegment> getSegments() {
+		return segments;
 	}
 
 	@Override

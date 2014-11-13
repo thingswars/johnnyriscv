@@ -2,7 +2,6 @@ package org.thingswars.johnnyriscv.test;
 
 import java.io.*;
 import java.net.URL;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 import org.junit.Ignore;
@@ -159,7 +158,7 @@ public class ElfReadTinyTest {
 	private Elf loadTestElf(String name) throws IOException {
 		URL resource = ElfReadTinyTest.class.getResource("/elfsamples/" + name);
 
-		try (RandomAccessFile randomAccessFile = new RandomAccessFile(resource.getFile(), "r")) {
+		try (RandomAccessFile randomAccessFile = new RandomAccessFile(resource.getFile(), "rw")) {
 			try (FileChannel fileChannel = randomAccessFile.getChannel()) {
 				return new Elf(fileChannel);
 			}

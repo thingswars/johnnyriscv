@@ -5,15 +5,21 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
+import org.thingswars.johnnyriscv.emulator.usermode.Segment;
+
+import com.google.common.primitives.UnsignedLongs;
+
 /**
  * Created by rob on 13/11/14.
  */
-public class ElfSegment {
+public class ElfSegment implements Segment {
 
     private final long alignedStart;
     private final long alignedEnd;
 
     private final long addressStart;
+    private final long addressEnd;
+    private final long addressMemoryEnd;
 
     private final ByteBuffer byteBuffer;
 
@@ -21,29 +27,23 @@ public class ElfSegment {
     private final boolean writeable;
     private final boolean readable;
 
-    ElfSegment(ElfProgramHeader programHeader, FileChannel fileChannel) throws IOException {
+    ElfSegment(ElfProgramHeader programHeader, ByteSource byteSource) throws IOException {
         readable = programHeader.readPermission();
         writeable = programHeader.writePermission();
         executable = programHeader.executePermission();
-        FileChannel.MapMode mode;
-        addressStart = programHeader.getVirtualAddress();
+        addressStart = programHeader.getVirtualAddress(); 
 
-        int offset = (int)programHeader.getOffset();
-        int size = programHeader.getFileImageSize();
+        long offset = programHeader.getOffset();
+        long fileSize = programHeader.getFileImageSize();
+        long memorySize = programHeader.getMemoryImageSize();
+        
+        addressEnd = addressStart + fileSize;
+        addressMemoryEnd = addressStart + memorySize;
+     
+        byteBuffer = byteSource.map(false, offset, fileSize);
 
-        if (writeable) {
-            // copy-on-write so that we don't modify the elf binary file
-            mode = FileChannel.MapMode.PRIVATE;
-        }
-        else {
-            mode = FileChannel.MapMode.READ_ONLY;
-        }
-        byteBuffer = fileChannel.map(mode, offset, size);
-
-        long alignmentMask = 0; // TODO alignment
-
-        alignedStart = addressStart;
-        alignedEnd = addressStart + programHeader.getMemoryImageSize();
+        alignedStart = addressStart - UnsignedLongs.remainder(addressStart, programHeader.getAlignment());
+        alignedEnd = addressMemoryEnd + (programHeader.getAlignment() - UnsignedLongs.remainder(addressMemoryEnd, programHeader.getAlignment()));
     }
 
     public long getAlignedStart() {
@@ -56,6 +56,14 @@ public class ElfSegment {
 
     public long getAddressStart() {
         return addressStart;
+    }
+    
+    public long getAddressEnd() {
+    	return addressEnd;
+    }
+    
+    public long getAddressMemoryEnd() {
+    	return addressEnd;
     }
 
     public ByteBuffer getByteBuffer() {

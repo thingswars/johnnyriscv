@@ -1,10 +1,6 @@
 package org.thingswars.johnnyriscv.support.elf;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
-
 import org.thingswars.johnnyriscv.support.Endianness;
 
 public class ElfIdentification {
@@ -22,13 +18,11 @@ public class ElfIdentification {
 	private final  byte operatingSystemAbi;
 	private final byte abiVersion;
 	
-	public ElfIdentification(ByteBuffer byteBuffer) throws ElfFormatException {
+	public ElfIdentification(ByteSource byteSource) throws IOException {
+		
 		byte[] ident = new byte[ELF_IDENT_LENGTH];
-
-		try {
-			byteBuffer.get(ident);
-		}
-		catch (BufferUnderflowException ex) {
+		
+		if (byteSource.read(ident) < ELF_IDENT_LENGTH) {
 			throw new ElfFormatException("Not an elf file: ident header too short");
 		}
 
