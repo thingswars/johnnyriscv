@@ -1,7 +1,7 @@
 johnnyriscv
 ===========
 
-A JVM-based RISC-V emulator for sandboxing applications.
+Java RISC-V emulator for sandboxing applications.
 
 johnnyriscv has the following design goals:
 
