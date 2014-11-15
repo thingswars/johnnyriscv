@@ -1,12 +1,13 @@
 package org.thingswars.johnnyriscv.support.elf;
 
 import java.io.IOException;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Elf {
+
+	private final ElfIdentification elfIdentification;
 
 	private final ElfHeader elfHeader;
 	
@@ -20,11 +21,13 @@ public class Elf {
 		if (byteSource.size() == 0) {
 			throw new ElfFormatException("Empty file");
 		}
-		elfHeader = new ElfHeader(byteSource);
+		elfIdentification = new ElfIdentification(byteSource);
+		ElfByteSource elfByteSource = new ElfByteSource(byteSource, elfIdentification);
+		elfHeader = new ElfHeader(elfByteSource);
 		segments = new ArrayList<>();
 		for (ElfProgramHeader programHeader : elfHeader.getProgramHeaders()) {
 			if (programHeader.loadableSegment()) {
-				segments.add(new ElfSegment(programHeader, byteSource));
+				segments.add(new ElfSegment(programHeader, elfByteSource));
 			}
 		}
 	}
@@ -34,7 +37,7 @@ public class Elf {
 	}
 
 	public ElfIdentification getElfIdentification() {
-		return elfHeader.getElfIdentification();
+		return elfIdentification;
 	}
 
 	public ElfProgramHeader[] getProgramHeaders() {
@@ -47,6 +50,6 @@ public class Elf {
 
 	@Override
 	public String toString() {
-		return "Elf" + elfHeader;
+		return "Elf[" + elfIdentification + ", " + elfHeader + "]";
 	}
 }

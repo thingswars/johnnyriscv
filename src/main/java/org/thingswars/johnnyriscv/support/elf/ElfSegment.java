@@ -27,7 +27,7 @@ public class ElfSegment implements Segment {
     private final boolean writeable;
     private final boolean readable;
 
-    ElfSegment(ElfProgramHeader programHeader, ByteSource byteSource) throws IOException {
+    ElfSegment(ElfProgramHeader programHeader, ElfByteSource byteSource) throws IOException {
         readable = programHeader.readPermission();
         writeable = programHeader.writePermission();
         executable = programHeader.executePermission();

@@ -1,16 +1,12 @@
 package org.thingswars.johnnyriscv.support.elf;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
 /**
  * Created by rob on 11/11/14.
  */
 public class ElfHeader {
-
-    private final ElfIdentification elfIdentification;
     private final ElfObjectType objectType;
     private final int machine;
     private final int version;
@@ -27,10 +23,7 @@ public class ElfHeader {
 
     private final ElfProgramHeader[] programHeaders;
 
-    public ElfHeader(ByteSource byteSource) throws IOException {
-    	
-        elfIdentification = new ElfIdentification(byteSource);
-        ElfByteSource elfByteSource = new ElfByteSource(byteSource, elfIdentification);
+    public ElfHeader(ElfByteSource elfByteSource) throws IOException {
         objectType = ElfObjectType.fromFileValue(elfByteSource.readHalfWord());
         machine = elfByteSource.readHalfWord();
         version = elfByteSource.readWord();
@@ -50,10 +43,6 @@ public class ElfHeader {
         for (int i = 0; i < programHeaderEntryCount; i++) {
             programHeaders[i] = new ElfProgramHeader(elfByteSource);
         }
-    }
-
-    public ElfIdentification getElfIdentification() {
-        return elfIdentification;
     }
 
     public ElfProgramHeader[] getProgramHeaders() {
@@ -86,7 +75,7 @@ public class ElfHeader {
 
     @Override
     public String toString() {
-        return "[elfIdentification=" + elfIdentification + ", objectType="
+        return "objectType="
                 + objectType + ", machine=" + machine + ", version=" + version
                 + ", entryAddress=" + Long.toHexString(entryAddress) + ", sectionHeaderOffset="
                 + sectionHeaderOffset + ", flags=" + flags + ", elfHeaderSize="
@@ -94,7 +83,7 @@ public class ElfHeader {
                 + Arrays.toString(programHeaders)
                 + sectionHeaderEntrySize + ", sectionHeaderEntryCount="
                 + sectionHeaderEntryCount + ", stringTableIndex="
-                + stringTableIndex + "]";
+                + stringTableIndex;
     }
 
 }

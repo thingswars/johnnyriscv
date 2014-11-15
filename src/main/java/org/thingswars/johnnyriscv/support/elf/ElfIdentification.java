@@ -1,7 +1,7 @@
 package org.thingswars.johnnyriscv.support.elf;
 
 import java.io.IOException;
-import org.thingswars.johnnyriscv.support.Endianness;
+import java.nio.ByteOrder;
 
 public class ElfIdentification {
 
@@ -13,7 +13,7 @@ public class ElfIdentification {
 	private static final int EI_ABIVERSION = 0x08;
 	
 	private final ElfFormat format;
-	private final Endianness endianness;
+	private final ByteOrder byteOrder;
 	private final byte version;
 	private final  byte operatingSystemAbi;
 	private final byte abiVersion;
@@ -47,10 +47,10 @@ public class ElfIdentification {
 		case 0:
 			throw new ElfFormatException("Invalid data encoding 0");
 		case 1:
-			endianness = Endianness.LITTLE;
+			byteOrder = ByteOrder.LITTLE_ENDIAN;
 			break;
 		case 2:
-			endianness = Endianness.BIG;
+			byteOrder = ByteOrder.BIG_ENDIAN;
 			break;
 		default:
 			throw new ElfFormatException("Unsupported data encoding " + ident[EI_DATA]);
@@ -66,8 +66,8 @@ public class ElfIdentification {
 		return format;
 	}
 
-	public Endianness getEndianness() {
-		return endianness;
+	public ByteOrder getByteOrder() {
+		return byteOrder;
 	}
 
 	public byte getVersion() {
@@ -86,7 +86,7 @@ public class ElfIdentification {
 	public String toString() {
 		return format +
 				" v" + version + " "
-				+ endianness + "-ENDIAN";
+				+ byteOrder;
 	}
 	
 	
