@@ -1,5 +1,10 @@
 package org.thingswars.johnnyriscv.emulator.usermode;
 
+import org.thingswars.johnnyriscv.emulator.usermode.csr.*;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
+
 /**
  * Created by rob on 13/11/14.
  */
@@ -7,12 +12,45 @@ public class Cpu {
 
     private final long gpr[] = new long[32];
 
+    private final ControlStatusRegister csr[] = new ControlStatusRegister[4096];
+
     private long pc = 0x2000;
+    private long instructionsRetired = 0;
 
     private final MemoryManagementUnit mmu;
 
+    private final ThreadMXBean threadMXBean;
+
+    private final boolean useThreadCpuTime;
+
+    public static final int RDCYCLE =    0b110000000000;
+    public static final int RDCYCLEH =   0b110010000000;
+    public static final int RDTIME =     0b110000000001;
+    public static final int RDTIMEH =    0b110010000001;
+    public static final int RDINSTRET =  0b110000000010;
+    public static final int RDINSTRETH = 0b110010000010;
+
     public Cpu(MemoryManagementUnit mmu) {
         this.mmu = mmu;
+        // Try to isolate thread cpu time
+        threadMXBean = ManagementFactory.getThreadMXBean();
+        if (threadMXBean.isCurrentThreadCpuTimeSupported()) {
+            useThreadCpuTime = true;
+            if (!threadMXBean.isThreadCpuTimeEnabled()) {
+                threadMXBean.setThreadCpuTimeEnabled(true);
+            }
+        }
+        else {
+            useThreadCpuTime = false;
+        }
+
+        csr[RDCYCLE] = new RdCycle();
+        csr[RDCYCLEH] = new RdCycle();
+        csr[RDTIME] = new RdTime();
+        csr[RDTIMEH] = new RdTimeH();
+        csr[RDINSTRET] = new RdInstret();
+        csr[RDINSTRETH] = new RdInstretH();
+        csr[0b101000] = new NoopControlStatusRegister(); // TODO
     }
 
     public void setProgramCounter(long pc) {
@@ -37,7 +75,8 @@ public class Cpu {
             case 0b10000: // "MADD"
                 throw new UnsupportedInstruction("MADD", pc);
             case 0b11000: // "BRANCH"
-                throw new UnsupportedInstruction("BRANCH", pc);
+                branch(instruction);
+                break;
 
             case 0b00001: // "LOAD-FP"
                 throw new UnsupportedInstruction("LOAD-FP", pc);
@@ -72,6 +111,7 @@ public class Cpu {
                 throw new UnsupportedInstruction("OP-FP", pc);
             case 0b11100: // "SYSTEM"
                 system(instruction);
+                pc += 4;
                 break;
 
             case 0b00101: // "AUIPC"
@@ -102,12 +142,60 @@ public class Cpu {
             default:
                 throw new IllegalInstruction(pc);
         }
+
+        ++instructionsRetired;
+    }
+
+    public void branch(int instruction) {
+        int funct3 = (instruction >>> 12) & 0b111;
+        long rs1 = gpr[(instruction >>> 15) & 0b11111];
+        long rs2 = gpr[(instruction >>> 20) & 0b11111];
+
+        boolean branch = false;
+
+        switch (funct3) {
+            case 0b000: // BEQ
+                branch = rs1 == rs2;
+                break;
+
+            case 0b001: // BNE
+                branch = rs1 != rs2;
+                break;
+
+            case 0b100: // BLT
+                branch = rs1 < rs2;
+                break;
+
+            case 0b101: // BGE
+                branch = rs1 > rs2;
+                break;
+
+            case 0b110: // BLTU
+                branch = rs1 < rs2; // TODO unsigned
+                break;
+
+            case 0b111: // BGTU
+                branch = rs1 > rs2; // TODO unsigned
+                break;
+
+            default:
+                throw new IllegalInstruction("Unknown BRANCH funct3 " +
+                        Integer.toBinaryString(funct3) +
+                        " at " + Long.toHexString(pc), pc);
+        }
+
+        if (branch) {
+            throw new RuntimeException("Branch, please!");
+        }
+        else {
+            pc += 4;
+        }
     }
 
     public void opImm(int instruction) {
         int rd = (instruction >>> 7) & 0b11111;
         int rs1 = (instruction >>> 15) & 0b11111;
-        int funct3 = (instruction >>> 12) & 0xb111;
+        int funct3 = (instruction >>> 12) & 0x111;
         long immediate = (instruction >> 20);
 
         switch (funct3) {
@@ -135,7 +223,7 @@ public class Cpu {
                 gpr[rd] = gpr[rs1] | immediate;
                 break;
 
-            case 0xb111: // ANDI
+            case 0b111: // ANDI
                 gpr[rd] = gpr[rs1] & immediate;
                 break;
             default:
@@ -158,11 +246,64 @@ public class Cpu {
                     throw new UnsupportedInstruction("SBREAK", pc);
                 }
                 throw new IllegalInstruction(pc);
+            case 0b001:
+                throw new IllegalInstruction("CSRW", pc);
             case 0b010:
-                throw new UnsupportedInstruction("CSRRS", pc);
+                csrrs(funct7, rd, rs1);
+                break;
+            case 0b011:
+                csrrc(funct7, rd, rs1);
+                break;
+
+            case 0b100:
+                throw new IllegalInstruction("CSRWI", pc);
+
+            case 0b101:
+                throw new IllegalInstruction("CSRSI", pc);
+
+            case 0b110:
+                throw new IllegalInstruction("CSRCI", pc);
+
+            case 0b111:
+                throw new IllegalInstruction("0b111", pc);
+
             default:
                 throw new IllegalInstruction(pc);
         }
+    }
 
+    public long getInstructionsRetired() {
+        return instructionsRetired;
+    }
+
+    public long getCycleTime() {
+        if (useThreadCpuTime) {
+            return threadMXBean.getCurrentThreadCpuTime();
+        }
+        return System.nanoTime();
+    }
+
+    private void csrrs(int funct7, int rd, int rs1) {
+
+        ControlStatusRegister controlStatusRegister = csr[funct7];
+
+        if (controlStatusRegister == null) {
+            throw new IllegalInstruction(
+                    "Undefined CSR " + Integer.toBinaryString(funct7) + " in CSRRS at " + Long.toHexString(pc), pc);
+        }
+
+        gpr[rd] = controlStatusRegister.readAndSet(this, rs1);
+    }
+
+    private void csrrc(int funct7, int rd, int rs1) {
+
+        ControlStatusRegister controlStatusRegister = csr[funct7];
+
+        if (controlStatusRegister == null) {
+            throw new IllegalInstruction(
+                    "Undefined CSR " + Integer.toBinaryString(funct7) + " in CSRRC at " + Long.toHexString(pc), pc);
+        }
+
+        gpr[rd] = controlStatusRegister.readAndClear(this, rs1);
     }
 }
